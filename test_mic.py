@@ -62,11 +62,8 @@ def main():
     except Exception as e:
         print("LVGL init failed/skipped (might be already initialized):", e)
         
-    try:
-        import waveshare as board
-        board.init()
-    except Exception as e:
-        print("Waveshare board init failed/skipped:", e)
+    import waveshare as board
+    board.init()
 
     # 2. Setup I2C & ES7210
     i2c = machine.I2C(0, sda=Pin(I2C_SDA), scl=Pin(I2C_SCL), freq=100000)

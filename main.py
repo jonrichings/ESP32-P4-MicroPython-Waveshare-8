@@ -1,4 +1,4 @@
-# main.py - Autonomous entry point for Elecrow P4 Clock
+# main.py - Autonomous entry point for Waveshare P4 8" Clock
 import gc
 import time
 

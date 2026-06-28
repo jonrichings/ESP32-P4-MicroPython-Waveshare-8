@@ -39,7 +39,7 @@ def format_date(tm):
 def handle_manual_time_adj(point):
     global last_ntp_sync
     tm = list(time.localtime())
-    if point.x < 512:
+    if point.x < 400:
         tm[3] = (tm[3] + 1) % 24
         msg = "Adjust: Hour -> {:02d}".format(tm[3])
     else:
@@ -114,9 +114,9 @@ def reset_wifi_slave():
     print("Stabilizing WiFi Slave (GPIO 32)...")
     try:
         p = machine.Pin(32, machine.Pin.OUT)
-        p.value(1) # Reset ON
+        p.value(0) # Reset ON (Active Low)
         time.sleep_ms(100)
-        p.value(0) # Reset OFF (Run)
+        p.value(1) # Reset OFF (Run)
         time.sleep(3) # Wait for co-processor to boot
         return True
     except: return False

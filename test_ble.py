@@ -3,17 +3,17 @@ import time
 import bluetooth
 import struct
 
-# Active-high network slave reset pin (GPIO 32)
+# Active-low network slave reset pin (GPIO 32) on Waveshare P4
 RESET_PIN = 32
 
 def init_coprocessor():
     print("\n[1/2] Checking/Initializing C6 co-processor (GPIO 32)...")
     try:
         rst = machine.Pin(RESET_PIN, machine.Pin.OUT)
-        # Pulse reset pin (1 = reset, 0 = run)
-        rst.value(1)
-        time.sleep_ms(100)
+        # Pulse reset pin (0 = reset, 1 = run)
         rst.value(0)
+        time.sleep_ms(100)
+        rst.value(1)
         time.sleep(2)  # Give C6 firmware ample time to boot up
         print("Co-processor boot initialized successfully.")
     except Exception as e:

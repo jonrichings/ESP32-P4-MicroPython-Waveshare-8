@@ -3,18 +3,9 @@ import time
 import sys
 
 # Import board driver
-try:
-    import waveshare as board
-    board_name = "Waveshare P4 8\""
-    width, height = 800, 1280
-except ImportError:
-    try:
-        import elecrow as board
-        board_name = "Elecrow P4 7\""
-        width, height = 600, 1024
-    except ImportError:
-        print("Error: Waveshare or Elecrow board module not found.")
-        sys.exit(1)
+import waveshare as board
+board_name = "Waveshare P4 8\""
+width, height = 800, 1280
 
 # Global variables for callback access
 buttons = {}

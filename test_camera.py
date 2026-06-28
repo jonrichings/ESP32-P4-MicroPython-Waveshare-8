@@ -4,21 +4,11 @@ import camera
 import sys
 import uctypes
 
-# 1. Detect and Initialize HMI Board
-try:
-    import waveshare as board
-    board_name = "Waveshare P4 8\""
-    sda_pin, scl_pin = 7, 8
-    cam_w, cam_h = 800, 640
-except ImportError:
-    try:
-        import elecrow as board
-        board_name = "Elecrow P4 7\""
-        sda_pin, scl_pin = 12, 13
-        cam_w, cam_h = 800, 640
-    except ImportError:
-        print("Error: Board driver (waveshare or elecrow) not found.")
-        sys.exit(1)
+# 1. Initialize Waveshare P4 8" Board
+import waveshare as board
+board_name = "Waveshare P4 8\""
+sda_pin, scl_pin = 7, 8
+cam_w, cam_h = 800, 640
 
 print(f"Initializing {board_name} Display & Backlight...")
 lv.init()

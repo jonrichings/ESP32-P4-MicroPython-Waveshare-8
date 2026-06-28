@@ -1,7 +1,7 @@
 import network, machine, time
 
-# Active-high WiFi slave reset pin (GPIO 32). 
-# 1 = Reset ON, 0 = Run (Normal operation)
+# Active-low WiFi slave reset pin (GPIO 32) on Waveshare P4. 
+# 0 = Reset ON, 1 = Run (Normal operation)
 RESET_PIN = 32
 
 def scan():
@@ -10,8 +10,11 @@ def scan():
     # Ensure WiFi slave is active (C firmware already reset it at boot)
     try:
         rst = machine.Pin(RESET_PIN, machine.Pin.OUT)
-        rst.value(0) # Reset OFF (Run)
-        time.sleep_ms(500) # Wait for stability
+        # Pulse reset (0 = reset, 1 = run)
+        rst.value(0)
+        time.sleep_ms(100)
+        rst.value(1) # Reset OFF (Run)
+        time.sleep(2) # Wait for co-processor to boot
     except Exception as e:
         print("Failed to configure reset pin:", e)
 

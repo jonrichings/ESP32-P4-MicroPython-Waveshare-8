@@ -1,8 +1,5 @@
 import lvgl as lv
-try:
-    import waveshare as board
-except ImportError:
-    import elecrow as board
+import waveshare as board
 import time
 
 lv.init()

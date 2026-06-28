@@ -101,6 +101,9 @@ static bool display_color_trans_done(esp_lcd_panel_handle_t panel,
   return false;
 }
 
+static uint16_t *rotation_temp_buf = NULL;
+static uint32_t rotation_temp_buf_sz = 0;
+
 static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area,
                           uint8_t *px_map) {
   if (g_callbacks_enabled == false) {
@@ -113,9 +116,32 @@ static void disp_flush_cb(lv_display_t *disp, const lv_area_t *area,
   int offsety1 = area->y1;
   int offsety2 = area->y2;
   
-  flush_pending = true;
-  esp_lcd_panel_draw_bitmap(jd9365_panel, offsetx1, offsety1, offsetx2 + 1,
-                            offsety2 + 1, px_map);
+  int W = offsetx2 - offsetx1 + 1;
+  int H = offsety2 - offsety1 + 1;
+  uint32_t needed_sz = W * H * 2;
+  
+  if (rotation_temp_buf == NULL || rotation_temp_buf_sz < needed_sz) {
+      if (rotation_temp_buf) heap_caps_free(rotation_temp_buf);
+      rotation_temp_buf = heap_caps_malloc(needed_sz, MALLOC_CAP_SPIRAM);
+      rotation_temp_buf_sz = needed_sz;
+  }
+  
+  if (rotation_temp_buf != NULL) {
+      uint16_t *src = (uint16_t *)px_map;
+      uint16_t *dst = rotation_temp_buf;
+      for (int i = 0; i < H; i++) {
+          for (int j = 0; j < W; j++) {
+              dst[j * H + (H - 1 - i)] = src[i * W + j];
+          }
+      }
+      flush_pending = true;
+      esp_lcd_panel_draw_bitmap(jd9365_panel, 800 - 1 - offsety2, offsetx1,
+                                800 - offsety1, offsetx2 + 1, (uint8_t *)dst);
+  } else {
+      flush_pending = true;
+      esp_lcd_panel_draw_bitmap(jd9365_panel, offsetx1, offsety1, offsetx2 + 1,
+                                offsety2 + 1, px_map);
+  }
 }
 
 void waveshare_deinit_internal(void) {
@@ -291,31 +317,31 @@ static mp_obj_t waveshare_init(void) {
   }
 
   if (disp_handle == NULL) {
-      disp_handle = lv_display_create(800, 1280);
+      disp_handle = lv_display_create(1280, 800);
       lv_display_set_flush_cb(disp_handle, disp_flush_cb);
   }
 
   // Allocate draw buffers once, reuse on re-init
-  size_t draw_buffer_sz = 800 * 20 * sizeof(uint16_t);
+  size_t draw_buffer_sz = 1280 * 800 * sizeof(uint16_t);
   if (lv_buf1 == NULL) {
     lv_buf1 =
-        heap_caps_malloc(draw_buffer_sz, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+        heap_caps_malloc(draw_buffer_sz, MALLOC_CAP_DMA | MALLOC_CAP_SPIRAM);
   }
-  if (lv_buf2 == NULL) {
-    lv_buf2 =
-        heap_caps_malloc(draw_buffer_sz, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+  if (lv_buf2 != NULL) {
+    heap_caps_free(lv_buf2);
+    lv_buf2 = NULL;
   }
 
-  lv_display_set_buffers(disp_handle, lv_buf1, lv_buf2, draw_buffer_sz,
-                         LV_DISPLAY_RENDER_MODE_PARTIAL);
+  lv_display_set_buffers(disp_handle, lv_buf1, NULL, draw_buffer_sz,
+                         LV_DISPLAY_RENDER_MODE_FULL);
 
   // 7. Initialize Touch (GT911)
   if (touch_panel == NULL) {
     i2c_master_bus_handle_t touch_i2c_bus = internal_i2c_bus;
     esp_lcd_panel_io_handle_t touch_io = NULL;
     esp_lcd_panel_io_i2c_config_t touch_io_config = {
-        .dev_addr = 0x5D,
-        .scl_speed_hz = 400000,
+        .dev_addr = 0x14,
+        .scl_speed_hz = 100000,
         .control_phase_bytes = 1,
         .dc_bit_offset = 0,
         .lcd_cmd_bits = 16,
@@ -324,6 +350,8 @@ static mp_obj_t waveshare_init(void) {
     };
 
     // GT911 Reset Sequence
+    gpio_reset_pin(40);
+    gpio_reset_pin(42);
     gpio_set_direction(40, GPIO_MODE_OUTPUT);
     gpio_set_direction(42, GPIO_MODE_OUTPUT);
     gpio_set_level(40, 0);
@@ -333,12 +361,6 @@ static mp_obj_t waveshare_init(void) {
     vTaskDelay(pdMS_TO_TICKS(10));
     gpio_set_direction(42, GPIO_MODE_INPUT);
     vTaskDelay(pdMS_TO_TICKS(50));
-
-    if (i2c_master_probe(touch_i2c_bus, 0x5D, 100) != ESP_OK) {
-        if (i2c_master_probe(touch_i2c_bus, 0x14, 100) == ESP_OK) {
-            touch_io_config.dev_addr = 0x14;
-        }
-    }
 
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
     esp_lcd_new_panel_io_i2c_v2(touch_i2c_bus, &touch_io_config, &touch_io);
